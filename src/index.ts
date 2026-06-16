@@ -208,7 +208,7 @@ function asResult(structuredContent: Record<string, unknown>) {
   };
 }
 
-const app = createMcpExpressApp();
+const app = createMcpExpressApp({ host: "0.0.0.0" });
 const port = Number(process.env.PORT ?? 3000);
 
 app.get("/", (_req, res) => {
