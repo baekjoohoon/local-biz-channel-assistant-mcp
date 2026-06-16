@@ -79,13 +79,10 @@ export function buildShopDiagnosis(profile: BusinessProfile, currentChallenge: s
 export function createCampaign(profile: BusinessProfile, goal: CampaignGoal, durationDays: number, budgetLevel: "none" | "low" | "medium", seasonOrEvent?: string) {
   const shop = normalizeProfile(profile);
   const heroItem = shop.signatureItems[0] ?? "대표 상품";
+  const companionItem = shop.signatureItems[1] ?? "추천 메뉴";
   const eventText = seasonOrEvent ? `${seasonOrEvent}에 맞춰 ` : "";
-  const benefit =
-    budgetLevel === "none"
-      ? "방문 고객에게 오늘의 추천 조합을 먼저 안내"
-      : budgetLevel === "low"
-        ? "소액 쿠폰 또는 사이드 혜택"
-        : "기간 한정 세트 혜택";
+  const benefit = buildOffer(shop, goal, budgetLevel);
+  const quietHour = goal === "quiet_hours" ? "오후 2시부터 5시까지" : "운영 시간 중";
 
   const headlineByGoal: Record<CampaignGoal, string> = {
     new_customers: `${shop.neighborhood}에서 처음 만나는 분께`,
@@ -98,30 +95,92 @@ export function createCampaign(profile: BusinessProfile, goal: CampaignGoal, dur
 
   const message = [
     `[${shop.businessName}] ${headlineByGoal[goal]}`,
-    `${eventText}${heroItem}을 가장 맛있게 즐길 수 있는 구성을 준비했습니다.`,
-    `혜택: ${benefit}`,
-    `기간: 오늘부터 ${durationDays}일`,
+    `${eventText}${heroItem}${shop.signatureItems.length > 1 ? `와 ${companionItem}` : ""}을 가장 편하게 즐길 수 있는 구성을 준비했습니다.`,
+    goal === "quiet_hours" ? `이용 시간: ${quietHour}` : undefined,
+    `혜택: ${benefit.primary}`,
+    `기간: 오늘부터 ${durationDays}일간`,
     "원하시면 이 메시지에 답장으로 문의해주세요."
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   return {
     goal: goalLabels[goal],
     campaignName: `${shop.businessName} ${goalLabels[goal]} ${durationDays}일 캠페인`,
     target: shop.targetCustomers.slice(0, 3),
-    offer: benefit,
+    recommendedOffer: benefit,
     channelMessage: message,
-    postingPlan: [
-      "1일차 오전: 핵심 혜택 공지",
-      "2일차 오후: 대표 상품 사진과 짧은 후기형 문구",
-      durationDays >= 5 ? "마감 2일 전: 남은 기간 리마인드" : "마감 전날: 짧은 리마인드",
-      "마감일 오후: 오늘까지 안내"
+    messageVariants: [
+      message,
+      `[${shop.businessName}] ${quietHour} 잠깐 쉬어가세요\n${heroItem}${shop.signatureItems.length > 1 ? ` + ${companionItem}` : ""} 추천 구성을 ${durationDays}일간 준비했습니다.\n방문 전 답장 주시면 바로 안내드릴게요.`,
+      `[${shop.businessName}] 오늘의 조용한 시간 추천\n${shop.neighborhood}에서 일하다가 잠깐 쉬고 싶을 때 ${heroItem}을 추천드려요.\n${benefit.primary}`
     ],
-    kpis: ["채널 메시지 클릭/답장 수", "쿠폰 언급 방문 수", "예약 또는 문의 전환 수"],
+    postingPlan: [
+      "1일차 오전 10시: 핵심 혜택과 이용 시간 공지",
+      goal === "quiet_hours" ? "1일차 오후 1시 40분: 한산한 시간 직전 짧은 리마인드" : "2일차 오후: 대표 상품 사진과 짧은 후기형 문구",
+      "3일차 오후: 실제 주문하기 쉬운 추천 조합 재안내",
+      durationDays >= 5 ? "마감 2일 전 오후: 남은 기간 리마인드" : "마감 전날 오후: 짧은 리마인드",
+      "마감일 오전: 오늘까지 안내"
+    ],
+    actionChecklist: [
+      "카운터 또는 메뉴판 옆에 같은 문구를 작게 붙인다",
+      "직원이 주문 받을 때 혜택명을 한 번만 말한다",
+      "방문 고객이 어떤 문구를 보고 왔는지 간단히 기록한다"
+    ],
+    kpis: ["채널 메시지 클릭/답장 수", "혜택명 언급 방문 수", "캠페인 시간대 객수", "추천 조합 판매 수"],
     guardrails: [
       "혜택 조건, 기간, 제외 항목을 한 문장으로 명시",
       "과장된 효능 표현 금지",
       "개인정보는 채널 답장으로 과도하게 요구하지 않기"
     ]
+  };
+}
+
+function buildOffer(shop: Required<BusinessProfile>, goal: CampaignGoal, budgetLevel: "none" | "low" | "medium") {
+  const heroItem = shop.signatureItems[0] ?? "대표 상품";
+  const companionItem = shop.signatureItems[1] ?? "추천 메뉴";
+  const pair = shop.signatureItems.length > 1 ? `${heroItem} + ${companionItem}` : heroItem;
+
+  if (goal === "quiet_hours") {
+    if (budgetLevel === "none") {
+      return {
+        primary: `오후 2시부터 5시까지 ${pair}를 오늘의 추천 조합으로 우선 안내`,
+        fallback: "할인 없이도 선택 이유를 명확히 보여주는 추천형 캠페인",
+        condition: "매장 상황에 따라 조합명과 시간대를 명확히 고지"
+      };
+    }
+    if (budgetLevel === "low") {
+      return {
+        primary: `오후 2시부터 5시까지 ${pair} 주문 시 1,000원 상당 추가 혜택`,
+        fallback: "스탬프 1개 추가 또는 작은 사이드 제공",
+        condition: "1인 1회, 재고 소진 시 종료"
+      };
+    }
+    return {
+      primary: `오후 2시부터 5시까지 ${pair} 한정 세트 구성`,
+      fallback: "세트 가격 또는 사이드 업그레이드 중 매장 부담이 낮은 방식 선택",
+      condition: "기간, 시간대, 제외 메뉴를 함께 고지"
+    };
+  }
+
+  if (budgetLevel === "none") {
+    return {
+      primary: `${heroItem}을 처음 고르는 고객을 위한 추천 이유 안내`,
+      fallback: "혜택 대신 선택 가이드를 제공",
+      condition: "가격 할인 표현 없이 추천 기준을 명확히 안내"
+    };
+  }
+
+  if (budgetLevel === "low") {
+    return {
+      primary: `${heroItem} 주문 고객에게 소액 쿠폰 또는 다음 방문 혜택 제공`,
+      fallback: "스탬프 추가 적립",
+      condition: "혜택 기간과 사용 조건을 한 문장으로 안내"
+    };
+  }
+
+  return {
+    primary: `${pair} 기간 한정 세트 혜택`,
+    fallback: "대표 상품 중심의 묶음 구성",
+    condition: "혜택 구성과 제외 조건을 명확히 안내"
   };
 }
 
