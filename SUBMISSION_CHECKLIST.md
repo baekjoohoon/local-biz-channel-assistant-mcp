@@ -1,0 +1,69 @@
+# AGENTIC PLAYER 10 제출 체크리스트
+
+공식 페이지 기준으로 예선 참여는 코드 완성만으로 끝나지 않습니다. 아래 순서를 모두 끝내야 공모전 접수가 됩니다.
+
+## 공식 진행 순서
+
+1. PlayMCP in KC에서 공모전용 MCP 서버 Endpoint 생성
+2. 생성한 Endpoint에 이 MCP 서버 배포
+3. PlayMCP 개발자 콘솔에서 새로운 MCP 서버 등록
+4. PlayMCP에서 임시 등록 상태로 테스트
+5. 최종 제출용 서버가 준비되면 등록 및 심사 요청
+6. 심사 통과 후 공개 상태를 나에게만 공개에서 전체 공개로 변경
+7. 공모전 페이지 하단의 Player 예선 참여 버튼으로 최종 제출
+
+## 사용자가 직접 해야 하는 일
+
+계정/권한/약관 때문에 아래는 사용자가 직접 해야 합니다.
+
+- 카카오 계정 로그인
+- PlayMCP in KC 접속
+- 공모전용 MCP 서버 Endpoint 생성
+- PlayMCP 개발자 콘솔에서 등록 버튼 클릭
+- 심사 요청 버튼 클릭
+- 심사 통과 후 전체 공개 전환
+- Player 예선 참여 최종 제출
+
+## 내가 준비해줄 일
+
+- PlayMCP in KC에 올릴 수 있는 배포 산출물 정리
+- Endpoint에 넣을 실행 명령/환경변수/Docker 설정 정리
+- PlayMCP 등록용 서비스명, 소개, 상세 설명 작성
+- 테스트 프롬프트와 데모 시나리오 작성
+- 심사 반려 가능성 줄이기 위한 안정성 점검
+- 본선 진출 시 Kakao Tools Widget 확장 설계
+
+## 공식 가이드에서 확인한 반려 포인트
+
+- 예선 참가용 Endpoint는 반드시 PlayMCP in KC에서 발급받아야 함
+- PlayMCP 개발자 콘솔에서 Endpoint 입력 후 정보 불러오기가 성공해야 함
+- 정보 불러오기가 실패하면 개발한 MCP 서버 문제로 판단해야 함
+- 처음에는 등록 및 심사 요청이 아니라 임시 등록으로 저장해야 함
+- 임시 등록 후 MCP 상세 미리보기에서 도구함에 추가하고 PlayMCP AI 채팅으로 충분히 테스트해야 함
+- 테스트 완료 후 임시 등록 상태의 MCP에서 심사 요청을 눌러야 함
+- 심사 승인 후 공개 상태가 나에게만 공개로 남아 있으므로 전체 공개로 직접 변경해야 함
+- 전체 공개된 MCP 상세 페이지 주소를 복사해 공모전 예선 접수 양식에 제출해야 함
+- MCP Server Name 또는 Tool Name에는 `kakao` 문자열을 포함하면 안 됨
+- Tool은 `name`, `description`, `inputSchema`, `annotations`를 포함해야 함
+- `annotations`에는 `title`, `readOnlyHint`, `destructiveHint`, `openWorldHint`, `idempotentHint`를 모두 지정해야 함
+- Streamable HTTP 방식의 Remote MCP 서버여야 함
+- Stateless MCP 서버가 권장됨
+- 툴 개수는 3개~10개 권장, 20개 초과 금지
+- 툴 응답 속도는 평균 100ms 이내, p99 3000ms 필수
+
+## 일정상 중요한 포인트
+
+- 접수 기간: 2026-06-15 ~ 2026-07-14
+- 본선 진출 발표: 2026-07-30
+- PlayMCP 서버 심사는 영업일 기준 최대 7일 소요
+- 공식 안내상 2026-07-07까지 심사 요청한 건은 2026-07-10까지 처리 예정
+- 2026-07-07 이후 심사 요청은 응모 기한 내 처리가 어려울 수 있음
+
+## 지금 상태
+
+- MCP 서버 MVP 구현 완료
+- 로컬 빌드 통과
+- 로컬 MCP initialize/tools/list/tools/call 테스트 통과
+- PlayMCP in KC 배포 전
+- PlayMCP 등록 전
+- 공모전 예선 참여 전
