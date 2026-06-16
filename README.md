@@ -92,6 +92,12 @@ docker run -p 3000:3000 dongne-biz-channel-assistant
 - 편의성: 사장님이 질문 한 번으로 메시지, 혜택, 일정, KPI까지 얻습니다.
 - 안정성: 입력 스키마가 명확하고 네트워크/API 키 의존성이 없습니다.
 
+대표 이미지:
+
+```text
+assets/representative-image.png
+```
+
 ## 사용자가 직접 해야 할 일
 
 계정 권한이 필요한 아래 작업은 사용자가 직접 진행해야 합니다.
