@@ -199,13 +199,40 @@ export function draftReplies(scenario: ReplyScenario, customerMessage: string, t
     general: "문의 주셔서 감사합니다."
   };
 
+  const recoveryStepByScenario: Record<ReplyScenario, string> = {
+    reservation: "가능한 시간대를 확인한 뒤 예약 확정 여부를 바로 안내합니다.",
+    complaint: "주문/방문 내용을 확인하고, 불편 지점과 가능한 조치 범위를 분명히 안내합니다.",
+    price_question: "가격, 포함 항목, 추가 비용 여부를 한 번에 정리합니다.",
+    sold_out: "대체 가능한 메뉴와 재입고 예상 시간을 함께 안내합니다.",
+    late_delivery: "현재 위치나 예상 도착 시간을 확인하고, 식은 음식/지연에 대한 조치 기준을 안내합니다.",
+    review_thanks: "감사 인사와 함께 다음 방문 이유를 자연스럽게 제안합니다.",
+    general: "고객이 바로 다음 행동을 할 수 있도록 선택지를 좁혀 안내합니다."
+  };
+
+  const replyClosers: Record<ReplyScenario, string> = {
+    reservation: "원하시는 시간과 인원을 알려주시면 바로 확인하겠습니다.",
+    complaint: "불편하셨던 부분을 매장에서 확인한 뒤 가능한 조치를 안내드리겠습니다.",
+    price_question: "원하시는 구성이나 인원 수를 알려주시면 더 정확히 안내드리겠습니다.",
+    sold_out: "가능한 대체 메뉴를 원하시면 바로 추천드리겠습니다.",
+    late_delivery: "확인되는 대로 예상 시간과 조치 방법을 바로 말씀드리겠습니다.",
+    review_thanks: "다음 방문 때도 만족하실 수 있게 더 잘 준비하겠습니다.",
+    general: "필요하신 내용을 한 번 더 알려주시면 바로 도와드리겠습니다."
+  };
+
   return {
     interpretedCustomerNeed: base,
     tone: toneText,
+    responsePrinciple: `${toneText} 톤으로 사과 또는 감사 인사를 먼저 전하고, 확인할 내용과 다음 행동을 분리해서 말합니다.`,
     replies: [
-      `${scenarioOpeners[scenario]} 확인 후 가장 빠르게 도와드리겠습니다.${policyLine}`,
-      `${scenarioOpeners[scenario]} 지금 가능한 방법을 정리해서 안내드릴게요.${policyLine}`,
-      `${scenarioOpeners[scenario]} 말씀 주신 부분은 매장에서 바로 확인하겠습니다.${policyLine}`
+      `${scenarioOpeners[scenario]} 말씀 주신 내용 먼저 확인하겠습니다. ${replyClosers[scenario]}${policyLine}`,
+      `${scenarioOpeners[scenario]} 기다리시지 않도록 지금 가능한 방법부터 정리해드릴게요. ${replyClosers[scenario]}${policyLine}`,
+      `${scenarioOpeners[scenario]} 말씀 주신 부분은 매장에서 바로 확인하겠습니다. ${recoveryStepByScenario[scenario]}${policyLine}`
+    ],
+    internalChecklist: [
+      "고객 감정에 먼저 반응한다",
+      "주문번호, 방문 시간, 예약 시간 등 최소 정보만 요청한다",
+      "확인 후 다시 연락할 시간을 정한다",
+      "환불/보상은 매장 정책 범위 안에서만 확정 표현을 쓴다"
     ],
     followUpQuestions: [
       "방문 또는 수령 희망 시간이 있으실까요?",
@@ -220,22 +247,32 @@ export function reviewMenuBoard(items: Array<{ name: string; price: number; cate
   const signatures = sorted.filter(item => item.isSignature).slice(0, 3);
   const highMargin = sorted.filter(item => item.marginHint === "high").slice(0, 3);
   const anchors = signatures.length ? signatures : sorted.slice(0, 3);
+  const affordable = [...items].sort((a, b) => a.price - b.price)[0];
+  const premium = [...items].sort((a, b) => b.price - a.price)[0];
+  const hero = anchors[0];
 
   return {
     heroItems: anchors.map(item => item.name),
     bundleIdeas: anchors.map((item, index) => ({
       name: `${item.name} ${index + 1}인 추천 세트`,
       logic: "대표 상품을 기준으로 선택 피로를 줄이고 객단가를 올리는 구성",
+      suggestedPriceHint: `${Math.round(item.price * 1.15 / 100) * 100}원 안팎부터 테스트`,
       suggestedCopy: `${item.name}을 처음 드신다면 이 조합부터 추천드려요.`
     })),
-    upsellCandidates: highMargin.map(item => ({
+    entryItem: affordable ? `${affordable.name}을 입문 메뉴로 앞세워 첫 주문 장벽을 낮춥니다.` : undefined,
+    premiumAnchor: premium ? `${premium.name}은 상단에 두되, 가격보다 선택 이유를 먼저 보여줍니다.` : undefined,
+    upsellCandidates: (highMargin.length ? highMargin : anchors.slice(0, 2)).map(item => ({
       item: item.name,
       message: `${item.name} 추가 시 만족도가 올라가는 선택지로 안내`
     })),
+    channelPostDraft: hero
+      ? `[오늘의 추천] ${hero.name}\n처음 오셨다면 이 메뉴부터 추천드려요.\n메뉴를 고르기 어렵다면 답장으로 취향을 알려주세요.`
+      : "대표 메뉴 1개를 정한 뒤 짧은 추천 문구를 붙여 채널에 올리세요.",
     menuBoardFixes: [
       "대표 메뉴는 상단 3개 안에 배치",
       "가격보다 선택 이유를 먼저 보여주기",
-      "카카오톡 채널 메시지에는 메뉴를 3개 이하로 제한"
+      "채널 메시지에는 메뉴를 3개 이하로 제한",
+      "세트명은 메뉴명보다 상황 중심으로 짓기. 예: 점심 빠른 한 끼, 퇴근길 간식"
     ]
   };
 }
@@ -248,16 +285,22 @@ export function weeklyPlan(profile: BusinessProfile, weeklyGoal: string, availab
   return {
     weeklyGoal,
     timeBudget: `${hours}시간`,
-    operatingPrinciple: "하루에 하나의 행동만 만들고, 카카오톡 채널 메시지는 짧게 보낸다.",
+    operatingPrinciple: "하루에 하나의 행동만 만들고, 채널 메시지는 짧게 보내며, 성과는 답장/방문/판매 중 하나로 기록한다.",
     days: [
-      { day: "월", action: `${focus} 구매 이유 3개 정리`, output: "채널 메시지 초안 1개" },
-      { day: "화", action: "단골/신규 고객별 혜택 문구 분리", output: "고객군별 문구 2개" },
-      { day: "수", action: "사진 또는 메뉴판에서 대표 컷 선정", output: "업로드 소재 1개" },
-      { day: "목", action: "한산한 시간대 혜택 공지", output: "방문 유도 메시지" },
-      { day: "금", action: "주말 예약/방문 리마인드", output: "마감성 메시지" },
-      { day: "토", action: "고객 질문과 반응 기록", output: "자주 묻는 질문 3개" },
-      { day: "일", action: "성과 확인 후 다음 주 반복 캠페인 선택", output: "다음 주 우선순위" }
+      { day: "월", time: "30분", action: `${focus} 구매 이유 3개 정리`, output: "채널 메시지 초안 1개" },
+      { day: "화", time: "40분", action: "단골/신규 고객별 혜택 문구 분리", output: "고객군별 문구 2개" },
+      { day: "수", time: "30분", action: "사진 또는 메뉴판에서 대표 컷 선정", output: "업로드 소재 1개" },
+      { day: "목", time: "20분", action: "한산한 시간대 혜택 공지", output: "방문 유도 메시지" },
+      { day: "금", time: "20분", action: "주말 예약/방문 리마인드", output: "마감성 메시지" },
+      { day: "토", time: "30분", action: "고객 질문과 반응 기록", output: "자주 묻는 질문 3개" },
+      { day: "일", time: "30분", action: "성과 확인 후 다음 주 반복 캠페인 선택", output: "다음 주 우선순위" }
     ],
+    firstMessageDraft: `[${shop.businessName}] 이번 주 추천\n${focus}을 가장 편하게 즐길 수 있는 구성을 준비했습니다.\n궁금하시면 이 메시지에 답장해주세요.`,
+    ownerDashboard: {
+      mondaySetup: "이번 주 목표와 대표 상품 1개를 고정",
+      dailyRecord: "답장 수, 방문 언급 수, 판매 수를 하루 1분 기록",
+      sundayDecision: "반응이 있었던 문구만 남기고 다음 주에 반복"
+    },
     measurement: ["답장 수", "방문 시 언급 수", "예약 전환 수", "재방문 쿠폰 사용 수"]
   };
 }
